@@ -2,31 +2,32 @@
 
 import ollama
 import json
-from .tools import list_directory_contents
+import os
+from .tools import ALL_TOOLS  # Import the master tool list
 
-AVAILABLE_TOOLS = {"list_directory_contents": list_directory_contents}
+# --- Dynamic Tool Configuration ---
+# Build the tools payload for the API from our master list
+API_TOOLS = [tool['schema'] for tool in ALL_TOOLS]
 
+# Build a mapping from tool name to the actual Python function
+AVAILABLE_FUNCTIONS = {tool['schema']['function']['name']: tool['function'] for tool in ALL_TOOLS}
+
+# --- Updated System Prompt ---
+# We've added the new 'read_file_contents' capability here.
 SYSTEM_PROMPT = """
-You are a helpful AI assistant that can answer questions about the user's local file system.
-You have access to a tool called `list_directory_contents` which allows you to see the files and folders in a directory.
-When a user asks what is in a directory, or asks about files, use this tool.
-If the user doesn't specify a path, assume they mean the current directory, which you can query using ".".
+You are a helpful AI assistant that can interact with the user's local file system.
+You have access to the following tools:
+- `list_directory_contents`: Use this to see the files and folders in a directory.
+- `read_file_contents`: Use this to read the text content of a specific file.
+
+When asked to read a file, you must provide its full path. First, list the files if you are unsure of the path.
 Be concise and clear in your answers.
 """
 
 def run_agent(user_prompt: str):
-    client = ollama.Client(host='http://localhost:11434')
-    
-    tools = [
-        {
-            'type': 'function',
-            'function': {
-                'name': 'list_directory_contents',
-                'description': 'List the files and folders in a specified directory path.',
-                'parameters': { 'type': 'object', 'properties': {'path': {'type': 'string'}}},
-            },
-        }
-    ]
+    # Check for OLLAMA_HOST environment variable, default to localhost
+    ollama_host = os.getenv('OLLAMA_HOST', 'http://localhost:11434')
+    client = ollama.Client(host=ollama_host)
     
     messages = [
         {'role': 'system', 'content': SYSTEM_PROMPT},
@@ -34,41 +35,31 @@ def run_agent(user_prompt: str):
     ]
     
     while True:
-        # Use the model that we have proven works
         response = client.chat(
             model='llama3.1:8b', 
             messages=messages,
-            tools=tools
+            tools=API_TOOLS  # Use our dynamically generated tool list
         )
         
-        # The ollama library returns a Message object. We append it to our history.
-        # The client is smart enough to handle this object in the next request.
         response_message = response['message']
         messages.append(response_message)
 
-        # If the model did NOT call a tool, we are done.
         if not response_message.get('tool_calls'):
             print(f"\n✅ Final Answer:\n{response_message['content']}")
             return
 
-        # The model DID call a tool. We need to process it.
         tool_calls = response_message['tool_calls']
         for tool_call in tool_calls:
-            # We access the function details using dictionary-style keys
             function_name = tool_call['function']['name']
             function_args = tool_call['function']['arguments']
             
-            function_to_call = AVAILABLE_TOOLS.get(function_name)
+            # Look up the function to call from our dynamic mapping
+            function_to_call = AVAILABLE_FUNCTIONS.get(function_name)
             
             if function_to_call:
-                # Execute the tool function
                 tool_output = function_to_call(**function_args)
-                
-                # Append the tool's output to the conversation history
                 messages.append({
                     'role': 'tool',
-                    'tool_call_id': tool_call.get('id'), # Pass the ID if available
-                    'name': function_name,
                     'content': tool_output,
                 })
             else:
