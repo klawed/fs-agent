@@ -1,16 +1,17 @@
 # FS-Agent 🤖📁
 
-A local filesystem AI assistant that can explore directories and read files using Ollama and local LLMs.
+A local filesystem AI assistant that can explore directories, read files, and **create/modify files** using Ollama and local LLMs.
 
 ## DIY-Why? 🤔
 
 **Why build another AI tool when there are so many already?**
 
-Because sometimes you need an AI that can actually *see* your files without uploading them to the cloud. Here's why FS-Agent exists:
+Because sometimes you need an AI that can actually *see* and *modify* your files without uploading them to the cloud. Here's why FS-Agent exists:
 
 ### The Problem
 - **Privacy Concerns**: You don't want to upload sensitive code/documents to external AI services
 - **Local Development**: You need an AI that understands your local project structure
+- **File Management**: You want AI assistance for creating and organizing files locally
 - **Offline Capability**: You want AI assistance even without internet
 - **Custom Control**: You need fine-grained control over what the AI can access
 
@@ -20,18 +21,24 @@ FS-Agent runs entirely locally using Ollama, giving you:
 - ⚡ **Fast Response**: No network latency for file operations
 - 🛠️ **Extensible**: Easy to add new filesystem tools
 - 🎯 **Focused**: Purpose-built for filesystem tasks
+- ✍️ **Creative**: Can create and modify files safely
 
 ### When to Use FS-Agent
 - Exploring unfamiliar codebases
+- Creating project templates and boilerplate code
+- Generating configuration files and documentation
 - Summarizing project structures
 - Finding specific files or code patterns
 - Getting quick overviews of configuration files
 - Analyzing log files or data files locally
+- **NEW**: Creating files, documentation, and project structures
 
 ## Features ✨
 
 - **Directory Listing**: Explore folder contents with natural language
 - **File Reading**: Read and analyze text files up to 100KB
+- **🆕 File Writing**: Create new files and safely modify existing ones
+- **🆕 Backup System**: Automatic backups when overwriting files
 - **Security First**: Built-in protections against path traversal and system file access
 - **Extensible Architecture**: Easy to add new filesystem tools
 - **Local LLM**: Uses Ollama for complete privacy
@@ -68,8 +75,8 @@ ollama pull llama3.2:1b
 git clone https://github.com/klawed/fs-agent.git
 cd fs-agent
 
-# Install in editable mode
-pip install -e .
+# Install in editable mode with dev dependencies
+pip install -e ".[dev]"
 ```
 
 #### Option 2: Direct Installation
@@ -103,10 +110,25 @@ fs-agent "Can you read pyproject.toml and tell me about the dependencies?"
 fs-agent "Show me the contents of config.json"
 ```
 
+**🆕 Create new files:**
+```bash
+fs-agent "Create a TODO.md file with a list of project tasks"
+fs-agent "Create a .gitignore file for a Python project"
+fs-agent "Generate a basic Flask app and save it as app.py"
+```
+
+**🆕 Modify existing files (with confirmation):**
+```bash
+fs-agent "Add error handling to the main.py file"
+fs-agent "Update the README with installation instructions"
+fs-agent "Add a new function to utils.py"
+```
+
 **Combined operations:**
 ```bash
-fs-agent "List the Python files in this directory, then read the main.py file"
-fs-agent "Find configuration files and summarize their contents"
+fs-agent "List the Python files, then create a simple test file for main.py"
+fs-agent "Read the config file and create a new one with better defaults"
+fs-agent "Create a complete project structure for a web scraper"
 ```
 
 ### Environment Configuration
@@ -137,9 +159,29 @@ fs-agent/
 │   ├── agent.py          # Main agent logic
 │   ├── cli.py           # Command-line interface  
 │   └── tools.py         # Filesystem tools (extensible)
+├── tests/
+│   ├── test_write_file.py      # Unit tests for write functionality
+│   └── run_functional_tests.py # Functional test runner
 ├── pyproject.toml       # Project configuration
 ├── README.md           # This file
-└── next-steps.md       # Development roadmap
+├── demo_write_capabilities.py  # Demo script
+└── write-file.md       # Implementation plan
+```
+
+### Running Tests
+
+```bash
+# Run unit tests with pytest
+pytest tests/test_write_file.py -v
+
+# Run functional tests
+python tests/run_functional_tests.py
+
+# Run the demo
+python demo_write_capabilities.py
+
+# Run tests with coverage
+pytest --cov=fs_agent tests/
 ```
 
 ### Adding New Tools
@@ -148,10 +190,10 @@ The architecture is designed for easy extension. To add a new tool:
 
 1. **Add the function** to `fs_agent/tools.py`:
 ```python
-def write_file_contents(path: str, content: str):
-    """Write content to a file with security checks."""
+def your_new_tool(param: str):
+    """Your new tool description."""
     # Implementation here
-    return json.dumps({"status": "success"})
+    return json.dumps({"result": "success"})
 ```
 
 2. **Add to ALL_TOOLS list**:
@@ -160,19 +202,18 @@ ALL_TOOLS.append({
     "schema": {
         'type': 'function',
         'function': {
-            'name': 'write_file_contents',
-            'description': 'Write content to a file.',
+            'name': 'your_new_tool',
+            'description': 'Description of what your tool does.',
             'parameters': {
                 'type': 'object',
                 'properties': {
-                    'path': {'type': 'string'},
-                    'content': {'type': 'string'}
+                    'param': {'type': 'string', 'description': 'Parameter description'}
                 },
-                'required': ['path', 'content']
+                'required': ['param']
             },
         },
     },
-    "function": write_file_contents
+    "function": your_new_tool
 })
 ```
 
@@ -180,27 +221,29 @@ ALL_TOOLS.append({
 
 That's it! The agent will automatically load and use your new tool.
 
-### Running Tests
-```bash
-# Basic functionality test
-fs-agent "List files in this directory"
-
-# File reading test  
-fs-agent "Read the pyproject.toml file"
-
-# Security test (should be blocked)
-fs-agent "Read /etc/passwd"
-```
-
 ## Security 🔒
 
 FS-Agent includes several security measures:
 
+### File Reading Security
 - **Path Traversal Protection**: Blocks `../` attempts to escape directory bounds
 - **System Directory Blocking**: Prevents access to `/`, `/etc`, `~` and other sensitive paths  
 - **File Size Limits**: Restricts file reading to 100KB to prevent memory issues
 - **Binary File Detection**: Gracefully handles non-text files
+
+### 🆕 File Writing Security
+- **Path Validation**: Strict validation of file paths and locations
+- **Extension Whitelist**: Only allows safe file types (`.txt`, `.py`, `.json`, `.md`, etc.)
+- **Overwrite Protection**: Requires explicit confirmation to overwrite existing files
+- **Automatic Backups**: Creates timestamped backups before any file modifications
+- **Size Limits**: Prevents creation of extremely large files (1MB limit)
+- **System Directory Protection**: Blocks writes to sensitive system locations
+- **Hidden File Protection**: Prevents modification of most hidden files
+
+### General Security
 - **Local-Only**: Everything runs on your machine, no data transmission
+- **Comprehensive Error Handling**: Graceful handling of all error conditions
+- **Audit Trail**: All file operations are logged for transparency
 
 ## Troubleshooting 🔧
 
@@ -215,20 +258,31 @@ FS-Agent includes several security measures:
 
 **"Permission denied" errors:**
 - Check file permissions
-- Ensure you're in a directory you can read
+- Ensure you're in a directory you can read/write
 - Try with a simple text file first
 
 **"File too large" errors:**
-- Files over 100KB are blocked for security
+- Files over 100KB (read) or 1MB (write) are blocked for security
 - Use other tools for large files or increase the limit in `tools.py`
+
+**🆕 "File extension not allowed" errors:**
+- Only safe file types are allowed for writing
+- Check the `ALLOWED_EXTENSIONS` list in `tools.py`
+- Add your extension if it's safe, or use a different extension
+
+**🆕 "Backup failed" errors:**
+- Check disk space and permissions
+- Backup directory `.fs-agent-backups` needs to be writable
+- Ensure original file is readable
 
 ## Contributing 🤝
 
 1. Fork the repository
 2. Create a feature branch
 3. Add your changes (especially new tools!)
-4. Test thoroughly
-5. Submit a pull request
+4. **Write tests** for your changes
+5. Test thoroughly with both unit and functional tests
+6. Submit a pull request
 
 ## License 📄
 
@@ -236,4 +290,12 @@ MIT License - see LICENSE file for details.
 
 ## What's Next? 🚀
 
-Check out `next-steps.md` for planned features and improvements. The architecture is designed to be highly extensible, so adding new filesystem capabilities is straightforward.
+The architecture is designed to be highly extensible. Planned features include:
+
+- **Interactive Confirmation**: Better user prompts for destructive operations
+- **File Templates**: Create files from predefined templates
+- **Version Control Integration**: Auto-commit changes with git
+- **Configuration Management**: User-configurable security settings
+- **Multi-file Operations**: Create entire project structures at once
+
+Check out `write-file.md` for the complete implementation plan and future roadmap.
