@@ -2,6 +2,7 @@
 
 import ollama
 import json
+import os
 from .tools import ALL_TOOLS  # Import the master tool list
 
 # --- Dynamic Tool Configuration ---
@@ -24,7 +25,9 @@ Be concise and clear in your answers.
 """
 
 def run_agent(user_prompt: str):
-    client = ollama.Client(host='http://localhost:11434')
+    # Check for OLLAMA_HOST environment variable, default to localhost
+    ollama_host = os.getenv('OLLAMA_HOST', 'http://localhost:11434')
+    client = ollama.Client(host=ollama_host)
     
     messages = [
         {'role': 'system', 'content': SYSTEM_PROMPT},
