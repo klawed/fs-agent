@@ -6,7 +6,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "fs-agent"
-version = "0.1.0"
+version = "0.2.0"
 authors = [
   { name="Your Name", email="you@example.com" },
 ]
@@ -17,5 +17,23 @@ dependencies = [
     "ollama",
 ]
 
+[project.optional-dependencies]
+dev = [
+    "pytest>=7.0.0",
+    "pytest-cov>=4.0.0",
+]
+
 [project.scripts]
 fs-agent = "fs_agent.cli:main"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = ["test_*.py"]
+python_classes = ["Test*"]
+python_functions = ["test_*"]
+addopts = [
+    "--verbose",
+    "--tb=short",
+    "--cov=fs_agent",
+    "--cov-report=term-missing",
+]
