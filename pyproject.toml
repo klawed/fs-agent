@@ -1,0 +1,21 @@
+# pyproject.toml
+
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "fs-agent"
+version = "0.1.0"
+authors = [
+  { name="Your Name", email="you@example.com" },
+]
+description = "An Ollama agent that can interact with the local file system."
+readme = "README.md"
+requires-python = ">=3.8"
+dependencies = [
+    "ollama",
+]
+
+[project.scripts]
+fs-agent = "fs_agent.cli:main"
