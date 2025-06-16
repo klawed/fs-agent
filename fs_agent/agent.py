@@ -36,7 +36,7 @@ def run_agent(user_prompt: str):
     
     while True:
         response = client.chat(
-            model='llama3.1:8b', 
+            model='llama3.2:latest', 
             messages=messages,
             tools=API_TOOLS  # Use our dynamically generated tool list
         )
